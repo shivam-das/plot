@@ -1,0 +1,201 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+    "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+<meta content="utf-8" http-equiv="encoding">
+      <script type="text/javascript"
+      src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCc5_z2Zruh01mevWGVavrIZ6D5N5Q_lqc&sensor=false&libraries=geometry">
+    </script>
+    </head>
+<body onload="initialize()">
+<input type="file" id="fileinput" onchange="upload()"/>
+
+<br><div style="color: #555555" id="uploading"></div>
+<div style="position:absolute">
+<input type="radio" name="trailType" onclick="setColor(this.value)" value="walk" > <font color="brown">Walk</input><br>
+<input type="radio" name="trailType" onclick="setColor(this.value)" value="bicycle"> <font color="green">Bicycle</input><br>
+<input type="radio" name="trailType" onclick="setColor(this.value)" value="bike"> <font color="blue">Motor Bike</input><br>
+<input type="radio" name="trailType" onclick="setColor(this.value)" value="car"> <font color="black">Car</input><br>
+<input type="radio" name="trailType" onclick="setColor(this.value)" value="leader"> <font color="yellow">Leader</input><br>
+<input type="radio" name="trailType" onclick="setColor(this.value)" value="outliers" > <font color="red">Outliers</input><br>
+
+</div>
+<br>
+<div id="map_canvas" style="width: 90%; height:680px; float:right; border: 1px solid #dddddd;"></div>
+
+<script type="text/javascript"><br>
+
+
+var map;
+var Wait;
+var color="blue";
+function setColor(trailType)
+{
+
+	switch(trailType)
+	{
+		case 'walk':
+				//alert(trailType);
+				color="brown";
+				break;
+		case 'bicycle':
+				//alert(trailType);
+				color="green";
+				break;
+		case 'bike':
+				//alert(trailType);
+				color="blue";
+				break;
+		case 'car':
+				//alert(trailType);
+				color="black";
+				break;
+		case 'leader':
+				//alert(trailType);
+				color="yellow";
+				break;
+		case 'outliers':
+				//alert(trailType);
+				color="red";
+				break;
+		default:
+				
+
+	}
+
+}
+function upload() {
+      document.getElementById("uploading").innerHTML="uploading....";
+      var myfile=document.getElementById("fileinput").files[0];
+      //alert(myfile.size);
+      var r = new FileReader();
+      
+      r.onload = function(e) { 
+	    var contents = e.target.result;
+	    
+	    parseContents(contents);
+	    //document.getElementById("cont").innerHTML=fileContent;
+	    
+	    document.getElementById("uploading").innerHTML="File uploaded: "+myfile.name;
+      }
+   
+      r.readAsText(myfile);
+}
+function parseContents(contents)
+{
+		
+	var totalContent=contents.split("\n");
+	var lat=new Array();
+	var long=new Array();
+	var speed=new Array();
+	var bearing=new Array();
+	var timestamp=new Array();
+	var Bearing=new Array();
+	var LatLong=new Array()
+	var polyOptions = {
+	    strokeColor: 'green',
+	    strokeOpacity: 1.0,
+	    strokeWeight: 3
+	  }
+	var g=-1;
+	var m=0;
+	var c=0;
+
+	var f_size=totalContent.length
+	for(var i=1;i<totalContent.length;i++)
+	{
+		j=i-1;
+		if(isNaN(totalContent[i]))
+		{	//alert(totalContent[i]);
+			var latlong=totalContent[i].split(",");
+			//alert(latlong[0]);
+			lat[j]=parseFloat(latlong[0]);
+			long[j]=parseFloat(latlong[1]);
+			speed[j]=parseFloat(latlong[2]);
+			bearing[j]=parseFloat(latlong[3]);
+			timestamp[j]=parseFloat(latlong[4]);
+
+
+
+			//alert(lat[i]);
+		if(j>0)
+		{
+			Bearing[j]=bearingCalc(lat[j-1],long[j-1],lat[j],long[j]);
+		}	plotCluster(lat[j],long[j],speed[j],bearing[j],timestamp[j],Bearing[j],color);				
+		}
+		
+	}
+		alert(long);
+   
+	  google.maps.event.addListener(map, 'click', clickedOnMap);
+
+/*poly1 = new google.maps.Polygon(polyOptions);
+		poly1.setMap(map);
+		var path=poly1.getPath();
+		for(var i=0;i<f_size;i++)
+		{
+			
+			var latlong = new google.maps.LatLng(lat[i],long[i],true);
+			path.push(latlong);
+		}
+		alert(poly1.getPath());*/
+}
+    
+function plotCluster(lat,long,speed,bearing,timestamp,Bearing,color)
+{
+    var latlong = new google.maps.LatLng(lat,long);
+	map.setCenter(latlong);
+	var contents="Lat: "+ lat+ "Long: "+long+" Bearing: "+bearing+" C Bearing:"+ Bearing;
+	var infowindow = new google.maps.InfoWindow({
+      content: contents
+  });
+	  var marker = new google.maps.Marker({
+		  position:latlong,
+		  icon:{ path: google.maps.SymbolPath.CIRCLE, fillColor: color,  fillOpacity: 0.8,scale: 1.5,strokeColor:color},     
+		  
+		  map:map
+	    });
+	overideMarkerOnClick(marker);
+}
+
+	
+
+function bearingCalc(lat1,long1,lat2,long2)
+{
+	var dLon=long2-long1;
+	var y = Math.sin(dLon) * Math.cos(lat2);
+	var x = Math.cos(lat1)*Math.sin(lat2) -
+     Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLon);
+	var brng = Math.atan2(y, x)*57.2957795;
+	brng=(brng+360)%360;
+	return(brng);
+}
+
+
+function initialize() {
+	
+        geocoder = new google.maps.Geocoder();
+ 
+ 
+        var myOptions = {
+          center: new google.maps.LatLng(22.546,88.354),
+          zoom: 17,
+          mapTypeId: google.maps.MapTypeId.ROADMAP
+        };
+        map = new google.maps.Map(document.getElementById("map_canvas"),
+            myOptions);
+  /*  google.maps.event.addListener(map,'click',function(event){
+        
+        
+    });
+    */
+
+}
+
+
+
+</script>
+    <script src= "Ends.js"></script>
+</body>
+</html>
